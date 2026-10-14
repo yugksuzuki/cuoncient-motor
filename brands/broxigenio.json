@@ -1,0 +1,22 @@
+{
+  "slug": "broxigenio",
+  "nome": "BR Oxigênio",
+  "fonte": "montserrat",
+  "logo": "brands/broxigenio/logo-branco.png",
+  "cores": {
+    "fundo_escuro": "#014924",
+    "fundo_meio": "#025E3A",
+    "fundo_claro": "#03865C",
+    "destaque": "#A9B723",
+    "destaque_texto": "#C3D13A",
+    "texto_sobre_destaque": "#014924",
+    "texto": "#FFFFFF",
+    "texto_suave": "#C9DDB0",
+    "balao_cliente": "#D9FDD3",
+    "balao_marca": "#FFFFFF",
+    "texto_balao": "#0B2A1B",
+    "rotulo_marca": "#03865C"
+  },
+  "fonte_medida_em": "2026-10-14, feed do @broxigenio (Apify + prints)",
+  "observacao": "Montserrat em caixa alta nos títulos; caixa lima com texto verde-escuro; logo branco em marca d'água a 7%."
+}

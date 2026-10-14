@@ -1,0 +1,100 @@
+name: Render de vídeo
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job em JSON (texto). Deixe vazio para usar job_path."
+        required: false
+        default: ""
+      job_path:
+        description: "Caminho de um job no repositório, ex.: jobs/exemplo-broxigenio-24h.json"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dependências (ffmpeg, Playwright, gdown)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Preparar o job
+        env:
+          JOB_TEXT: ${{ inputs.job }}
+          JOB_PATH: ${{ inputs.job_path }}
+        run: |
+          if [ -n "$JOB_TEXT" ]; then
+            printf '%s' "$JOB_TEXT" > job.json
+          elif [ -n "$JOB_PATH" ]; then
+            cp "$JOB_PATH" job.json
+          else
+            echo "Informe job ou job_path" && exit 1
+          fi
+          JOB_ID=$(python -c "import json;print(json.load(open('job.json'))['id'])")
+          echo "JOB_ID=$JOB_ID" >> "$GITHUB_ENV"
+          echo "TAG=video-$JOB_ID-$GITHUB_RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Renderizar
+        run: python motor/render.py job.json --out out
+
+      - name: Publicar os arquivos numa release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp job.json "out/$JOB_ID/${JOB_ID}_job.json"
+          gh release create "$TAG" out/"$JOB_ID"/* \
+            --title "Vídeo: $JOB_ID" \
+            --notes "Render automático do job $JOB_ID (run $GITHUB_RUN_ID)."
+
+      - name: Avisar o n8n
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CALLBACK: ${{ secrets.N8N_CALLBACK_URL }}
+          CALLBACK_TOKEN: ${{ secrets.N8N_CALLBACK_TOKEN }}
+          STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$CALLBACK" ]; then echo "Sem N8N_CALLBACK_URL: nada a avisar"; exit 0; fi
+          ASSETS="[]"
+          if [ "$STATUS" = "success" ]; then
+            ASSETS=$(gh release view "$TAG" --json assets --jq '[.assets[] | {nome: .name, url_api: .apiUrl, tamanho: .size}]')
+          fi
+          export ASSETS
+          python - <<'PY'
+          import json, os, urllib.request
+          corpo = {
+              "token": os.environ.get("CALLBACK_TOKEN", ""),
+              "status": os.environ["STATUS"],
+              "job_id": os.environ.get("JOB_ID", ""),
+              "tag": os.environ.get("TAG", ""),
+              "run_url": os.environ["RUN_URL"],
+              "repo": os.environ["GITHUB_REPOSITORY"],
+              "arquivos": json.loads(os.environ.get("ASSETS", "[]") or "[]"),
+          }
+          try:
+              marca = json.load(open("job.json"))["marca"]
+          except Exception:
+              marca = ""
+          corpo["marca"] = marca
+          req = urllib.request.Request(os.environ["CALLBACK"], data=json.dumps(corpo).encode(),
+                                       headers={"Content-Type": "application/json"}, method="POST")
+          print(urllib.request.urlopen(req, timeout=30).status)
+          PY
+        shell: bash

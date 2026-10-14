@@ -1,0 +1,72 @@
+{
+  "name": "Vídeo — pedir render (Cuoncient)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video-render",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1f0c7a2-1111-4b6e-9a10-000000000001",
+      "name": "Receber pedido",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "7c3e2d10-video-render-0001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Troque o token abaixo e use o mesmo valor em quem chama (Claude, formulário, curl).\nconst TOKEN = 'TROQUE-ESTE-TOKEN';\nconst body = $input.first().json.body || {};\nif (body.token !== TOKEN) {\n  throw new Error('token inválido');\n}\nconst job = typeof body.job === 'string' ? JSON.parse(body.job) : body.job;\nif (!job || !job.id || !job.marca || !job.audio || !job.cenas || !job.legendas || !job.fechamento) {\n  throw new Error('job incompleto: precisa de id, marca, audio, cenas, legendas e fechamento');\n}\nreturn [{ json: { job_id: job.id, dispatch: { ref: 'main', inputs: { job: JSON.stringify(job) } } } }];"
+      },
+      "id": "a1f0c7a2-1111-4b6e-9a10-000000000002",
+      "name": "Validar job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/yugksuzuki/cuoncient-motor/actions/workflows/render.yml/dispatches",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.dispatch) }}",
+        "options": {}
+      },
+      "id": "a1f0c7a2-1111-4b6e-9a10-000000000003",
+      "name": "Disparar GitHub Actions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, job_id: $('Validar job').first().json.job_id, aviso: 'Render disparado. O resultado chega no fluxo Vídeo — receber resultado em 5 a 8 minutos.' }) }}",
+        "options": {}
+      },
+      "id": "a1f0c7a2-1111-4b6e-9a10-000000000004",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 0]
+    }
+  ],
+  "connections": {
+    "Receber pedido": { "main": [[{ "node": "Validar job", "type": "main", "index": 0 }]] },
+    "Validar job": { "main": [[{ "node": "Disparar GitHub Actions", "type": "main", "index": 0 }]] },
+    "Disparar GitHub Actions": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

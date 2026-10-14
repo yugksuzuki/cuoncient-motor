@@ -1,0 +1,3 @@
+Montserrat — Copyright The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat).
+Licenciada sob a SIL Open Font License, versão 1.1 (https://openfontlicense.org).
+Arquivos obtidos do pacote @fontsource/montserrat.
