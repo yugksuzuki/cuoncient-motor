@@ -21,10 +21,10 @@ Drive do cliente  ◄──  n8n "Vídeo — receber resultado"  ◄──  rele
 
 - **Claude**: assiste/lê o material, escolhe o trecho com a voz, escreve as legendas e o fechamento, e devolve o job.
 - **n8n**: recebe o job, dispara o Actions e, quando o render termina, salva os arquivos na pasta do cliente no Drive.
-- **GitHub Actions**: renderiza (cerca de 5 a 8 minutos por job, contando a instalação).
+- **GitHub Actions**: renderiza (cerca de 3 minutos por job, contando a instalação; o teste de 14/10 levou 2min41s).
 - **CapCut Pro**: opcional, só para acabamento manual em cima da versão **sem legenda** + `.srt`.
 
-Custo extra: perto de zero. Cada job usa uns 6 a 8 minutos de máquina do GitHub, dentro da cota grátis mensal. O n8n já é pago.
+Custo extra: perto de zero. Cada job usa uns 3 minutos de máquina do GitHub, dentro da cota grátis mensal. O n8n já é pago.
 
 ## Instalar (uma vez)
 
