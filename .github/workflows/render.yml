@@ -64,6 +64,7 @@ jobs:
 
       - name: Avisar o n8n
         if: always()
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           CALLBACK: ${{ secrets.N8N_CALLBACK_URL }}

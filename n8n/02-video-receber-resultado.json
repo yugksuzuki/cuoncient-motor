@@ -12,18 +12,24 @@
       "name": "Resultado do GitHub",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "7c3e2d10-video-pronto-0001"
     },
     {
       "parameters": {
-        "jsCode": "// Mesmo valor do secret N8N_CALLBACK_TOKEN do repositório.\nconst TOKEN = 'TROQUE-ESTE-TOKEN-DE-RETORNO';\n// Pasta do Drive de cada cliente (id da pasta). Acrescente uma linha por cliente.\nconst PASTAS = {\n  broxigenio: '1cQFV-hxVuZ-_yHCcoJjGHekd4WPV7DlP'\n};\nconst b = $input.first().json.body || {};\nif (b.token !== TOKEN) throw new Error('token de retorno inválido');\nif (b.status !== 'success') throw new Error(`render falhou: ${b.run_url}`);\nconst pasta = PASTAS[b.marca];\nif (!pasta) throw new Error(`sem pasta do Drive para a marca ${b.marca}`);\nreturn (b.arquivos || []).map(a => ({ json: { nome: a.nome, url_api: a.url_api, pasta, job_id: b.job_id, run_url: b.run_url } }));"
+        "jsCode": "// Mesmo valor do secret N8N_CALLBACK_TOKEN do repositório.\nconst TOKEN = 'TROQUE-ESTE-TOKEN-DE-RETORNO';\n// Só aceita arquivos das releases deste repositório.\nconst REPO = 'yugksuzuki/cuoncient-motor';\n// Pasta do Drive de cada cliente (id da pasta). Acrescente uma linha por cliente.\nconst PASTAS = {\n  broxigenio: '1cQFV-hxVuZ-_yHCcoJjGHekd4WPV7DlP'\n};\nconst b = $input.first().json.body || {};\nif (b.token !== TOKEN) throw new Error('token de retorno inválido');\nif (b.repo !== REPO) throw new Error(`repositório inesperado: ${b.repo}`);\nif (b.status !== 'success') throw new Error(`render falhou: ${b.run_url}`);\nconst pasta = PASTAS[b.marca];\nif (!pasta) throw new Error(`sem pasta do Drive para a marca ${b.marca}`);\nconst prefixo = `https://api.github.com/repos/${REPO}/releases/assets/`;\nconst arquivos = (b.arquivos || []).filter(a => typeof a.url_api === 'string' && a.url_api.startsWith(prefixo));\nif (!arquivos.length) throw new Error('nenhum arquivo válido no aviso');\nreturn arquivos.map(a => ({ json: { nome: a.nome, url_api: a.url_api, pasta, job_id: b.job_id, run_url: b.run_url } }));"
       },
       "id": "b2e1d8b3-2222-4c7f-8b20-000000000002",
       "name": "Separar arquivos",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -33,38 +39,91 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/octet-stream" }
+            {
+              "name": "Accept",
+              "value": "application/octet-stream"
+            }
           ]
         },
         "options": {
-          "response": { "response": { "responseFormat": "file" } }
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
         }
       },
       "id": "b2e1d8b3-2222-4c7f-8b20-000000000003",
       "name": "Baixar arquivo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
         "name": "={{ $('Separar arquivos').item.json.nome }}",
-        "driveId": { "__rl": true, "mode": "list", "value": "My Drive" },
-        "folderId": { "__rl": true, "mode": "id", "value": "={{ $('Separar arquivos').item.json.pasta }}" },
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Separar arquivos').item.json.pasta }}"
+        },
         "options": {}
       },
       "id": "b2e1d8b3-2222-4c7f-8b20-000000000004",
       "name": "Salvar no Drive do cliente",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [720, 0]
+      "position": [
+        720,
+        0
+      ]
     }
   ],
   "connections": {
-    "Resultado do GitHub": { "main": [[{ "node": "Separar arquivos", "type": "main", "index": 0 }]] },
-    "Separar arquivos": { "main": [[{ "node": "Baixar arquivo", "type": "main", "index": 0 }]] },
-    "Baixar arquivo": { "main": [[{ "node": "Salvar no Drive do cliente", "type": "main", "index": 0 }]] }
+    "Resultado do GitHub": {
+      "main": [
+        [
+          {
+            "node": "Separar arquivos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar arquivos": {
+      "main": [
+        [
+          {
+            "node": "Baixar arquivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixar arquivo": {
+      "main": [
+        [
+          {
+            "node": "Salvar no Drive do cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }
