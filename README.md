@@ -33,7 +33,7 @@ Custo extra: perto de zero. Cada job usa uns 3 minutos de máquina do GitHub, de
    - `N8N_CALLBACK_URL`: a URL de produção do webhook `video-pronto` do fluxo 2.
    - `N8N_CALLBACK_TOKEN`: uma senha qualquer. Use a mesma no fluxo 2.
 3. No n8n, importe `n8n/01-video-pedir-render.json` e `n8n/02-video-receber-resultado.json`.
-   - Nos dois nós HTTP, escolha uma credencial **GitHub API** com um token que tenha permissão de Actions (escrita) e Contents (leitura) neste repositório.
+   - Nos dois nós HTTP, escolha uma credencial **GitHub API** com acesso a este repositório (Actions: escrita; Contents: leitura). No n8n do Gui é a credencial **"Github"**; a "GitHub account" dá *Forbidden* aqui.
    - No nó do Drive, escolha a credencial do Google Drive.
    - Troque `TROQUE-ESTE-TOKEN` (fluxo 1) e `TROQUE-ESTE-TOKEN-DE-RETORNO` (fluxo 2).
    - Se o repositório tiver outro nome, ajuste a URL no nó "Disparar GitHub Actions".
