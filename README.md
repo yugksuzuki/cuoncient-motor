@@ -8,7 +8,8 @@ O roteiro é o que deu certo com a BR Oxigênio em 14/10/2026:
 2. **Legendas exatas da fala**, na fonte e nas cores da marca, com destaque nas palavras-chave.
 3. **Logo** no canto durante as cenas.
 4. **Fechamento animado em forma de conversa** (cliente pergunta, marca responde 24h) + "Chame agora no WhatsApp" + **seta apontando para o botão real da Meta**. Não existe botão desenhado.
-5. Saem **9x16** (Reels e Stories) e **4x5** (feed), cada um com e sem legenda, mais o fechamento separado, as legendas em `.srt` e o logo.
+5. **Acabamento automático**: áudio normalizado a -14 LUFS (padrão de Reels) e leve ajuste de contraste, cor e nitidez nas cenas.
+6. Saem **9x16** (Reels e Stories) e **4x5** (feed), cada um com e sem legenda, mais o fechamento separado, as legendas em `.srt` e o logo.
 
 ## Como roda
 
@@ -73,6 +74,9 @@ Veja `jobs/exemplo-broxigenio-24h.json`. Campos:
 | `fechamento` | `assinatura` (frases com `em` = segundos depois do início do fechamento), `conversa` (balões `cliente`/`marca`), `chamada`, `sub`, `toque` |
 | `formatos` | `9x16` e/ou `4x5` |
 | `extras` | `sem_legenda`, `srt`, `fechamento_separado` |
+| `faixa` | opcional: `titulo` e `sub` numa caixa lima ao lado do logo, do 1º quadro até o fechamento (vira a capa do anúncio) |
+| `fechamento.ritmo` | opcional: `inicio`, `digitando`, `intervalo` em ms (padrão 350/700/600; o piloto v4 usa 150/450/400) |
+| `acabamento` | opcional: `lufs` (padrão -14), `pico`, `contraste`, `saturacao`, `brilho`, `nitidez`; `false` desliga |
 
 O fechamento começa 0,25 s antes de acabarem as cenas e vai até o fim do áudio. Ele precisa de uns 4 segundos para a conversa, a chamada e a seta aparecerem.
 

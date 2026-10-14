@@ -1,0 +1,116 @@
+{
+  "id": "broxigenio-24h-piloto-v4",
+  "marca": "broxigenio",
+  "midias": {
+    "reel": {
+      "drive": "1vTL9KsegomebroP-L5cd0c5OfMrMirsy",
+      "nome": "IMG_1306.MOV"
+    },
+    "montagem": {
+      "drive": "1QBO3XGZJgmJFQ1_Rh7mWvlDyVo3_k-oh",
+      "nome": "IMG_1302.MOV"
+    }
+  },
+  "audio": {
+    "midia": "reel",
+    "inicio": 30.15,
+    "duracao": 10.85
+  },
+  "cenas": [
+    {
+      "midia": "montagem",
+      "inicio": 16.0,
+      "duracao": 2.38,
+      "zoom": 0.05
+    },
+    {
+      "midia": "montagem",
+      "inicio": 18.2,
+      "duracao": 1.77,
+      "zoom": 0.05,
+      "zoom_inicial": 0.03
+    },
+    {
+      "midia": "montagem",
+      "inicio": 0.95,
+      "duracao": 2.1,
+      "zoom": 0.04
+    }
+  ],
+  "legendas": [
+    {
+      "de": 0.08,
+      "ate": 0.62,
+      "texto": "Estamos em"
+    },
+    {
+      "de": 0.62,
+      "ate": 2.36,
+      "texto": "Jussara, Goiás.",
+      "destaque": "tudo"
+    },
+    {
+      "de": 2.4,
+      "ate": 4.15,
+      "texto": "Atendimento <em>24 horas</em>"
+    },
+    {
+      "de": 4.15,
+      "ate": 5.15,
+      "texto": "para atender"
+    },
+    {
+      "de": 5.15,
+      "ate": 6.1,
+      "texto": "quando você <em>mais precisar.</em>"
+    }
+  ],
+  "fechamento": {
+    "assinatura": [
+      {
+        "texto": "BR Oxigênio:",
+        "em": 0.55
+      },
+      {
+        "texto": "fonte de vida,",
+        "em": 2.05
+      },
+      {
+        "texto": "tecnologia e confiança.",
+        "em": 3.3
+      }
+    ],
+    "conversa": [
+      {
+        "quem": "cliente",
+        "texto": "Oi! Meu cilindro está acabando."
+      },
+      {
+        "quem": "marca",
+        "texto": "Oi! Atendemos <b>24 horas</b>. Me fala sua cidade que a gente leva até você."
+      }
+    ],
+    "chamada": "Chame agora<br>no WhatsApp",
+    "sub": "Atendimento 24h · Jussara e região",
+    "toque": "Toque em Enviar mensagem",
+    "ritmo": {
+      "inicio": 150,
+      "digitando": 450,
+      "intervalo": 400
+    }
+  },
+  "formatos": [
+    "9x16",
+    "4x5"
+  ],
+  "extras": {
+    "sem_legenda": true,
+    "srt": true,
+    "fechamento_separado": true
+  },
+  "faixa": {
+    "titulo": "Oxigênio 24 horas",
+    "sub": "Jussara e região"
+  },
+  "_notas": "Piloto v4 (14/10): cilindros primeiro com faixa '24 horas' desde o 1º quadro; corte do laço com a equipe no 'para atender quando você mais precisar'; chamada aparece ~1,4 s antes; acabamento automático de som (-14 LUFS) e cor."
+}
