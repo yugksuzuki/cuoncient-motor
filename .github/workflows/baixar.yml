@@ -1,0 +1,36 @@
+name: Baixar arquivos por URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      arquivos:
+        description: "Lista nome=url separada por vírgula"
+        required: true
+      tag:
+        description: "Tag da release (rascunho) onde guardar"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  baixar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Baixar e guardar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARQUIVOS: ${{ inputs.arquivos }}
+          TAG: ${{ inputs.tag }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p d
+          IFS=',' read -ra ITENS <<< "$ARQUIVOS"
+          for it in "${ITENS[@]}"; do
+            nome="$(echo "${it%%=*}" | xargs)"; url="$(echo "${it#*=}" | xargs)"
+            curl -fsSL -A "Mozilla/5.0" -o "d/$nome" "$url"
+            ls -la "d/$nome"
+          done
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "Arquivos $TAG" --notes "Arquivos baixados por URL."
+          gh release upload "$TAG" d/* --clobber
