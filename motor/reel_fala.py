@@ -39,7 +39,8 @@ def run(cmd: list[str]) -> str:
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         sys.stderr.write(r.stderr[-3000:])
-        raise SystemExit(f"falhou: {' '.join(cmd[:4])}")
+        Path("/tmp/reel_ultimo_cmd.json").write_text(json.dumps(cmd))
+        raise SystemExit(f"falhou ({r.returncode}): {' '.join(cmd[:4])}")
     return r.stderr
 
 
@@ -61,6 +62,12 @@ def montar_legendas(job: dict, transc: dict) -> list[dict]:
     corr = {k.lower(): v for k, v in job.get("correcoes", {}).items()}
     destaques = {limpar(d) for d in job.get("destaques", [])}
     palavras = [w for s in transc["segmentos"] for w in s.get("palavras", [])]
+    # trocas por posição: [[inicio_da_palavra, "novo texto"]]; texto vazio apaga a palavra
+    for t_ini, novo in job.get("trocas", []):
+        for w in palavras:
+            if abs(w["ini"] - t_ini) < 0.03:
+                w["p"] = novo
+    palavras = [w for w in palavras if w["p"].strip()]
     saida, acc = [], 0.0
     for ini, fim in job["trechos"]:
         ws = [w for w in palavras if w["ini"] >= ini - 0.05 and w["fim"] <= fim + 0.15]
@@ -214,23 +221,48 @@ def main() -> None:
         sw, sh = int(W * z) // 2 * 2, int(H * z) // 2 * 2
         x = max(0, min(sw - W, int(cx * sw - W / 2)))
         y = max(0, min(sh - H, int(cy * sh - H / 2)))
-        f.append(f"[0:v]trim={i}:{fim},setpts=PTS-STARTPTS,fps={FPS},scale={sw}:{sh}:flags=lanczos,crop={W}:{H}:{x}:{y},setsar=1,{eq},format=yuv420p[v{k}]")
-        f.append(f"[0:a]atrim={i}:{fim},asetpts=PTS-STARTPTS,afade=t=in:d=0.02,afade=t=out:st={fim - i - 0.03:.3f}:d=0.03[a{k}]")
+        # cada trecho entra como uma entrada separada (-ss/-t): evita guardar o vídeo inteiro na memória
+        f.append(f"[{k}:v]setpts=PTS-STARTPTS,fps={FPS},scale={sw}:{sh}:flags=lanczos,crop={W}:{H}:{x}:{y},setsar=1,{eq},format=yuv420p,trim=duration={fim - i:.3f}[v{k}]")
+        f.append(f"[{k}:a]asetpts=PTS-STARTPTS,atrim=duration={fim - i:.3f},afade=t=in:d=0.02,afade=t=out:st={fim - i - 0.03:.3f}:d=0.03[a{k}]")
     n = len(trechos)
     f.append("".join(f"[v{k}][a{k}]" for k in range(n)) + f"concat=n={n}:v=1:a=1[vc][ac]")
-    entradas = ["-i", str(video), "-loop", "1", "-t", str(D), "-i", str(tmp / "fixo.png"),
-                "-loop", "1", "-t", str(DF + 0.2), "-framerate", str(FPS), "-i", str(tmp / "fech.png")]
-    idx = 3
-    atual = "vc"
-    f.append(f"[{atual}][1:v]overlay=0:0[f0]"); atual = "f0"
-    if job.get("abertura"):
-        entradas += ["-loop", "1", "-t", str(D), "-i", str(tmp / "abertura.png")]
-        f.append(f"[{atual}][{idx}:v]overlay=0:0:enable='lt(t,{job['abertura']['ate']})'[fa]"); atual = "fa"; idx += 1
+    # uma faixa única de sobreposição (bem mais rápido que dezenas de overlays):
+    # cada intervalo recebe um PNG já composto (fixo + abertura ou fixo + legenda)
+    from PIL import Image
+    fixo = Image.open(tmp / "fixo.png").convert("RGBA")
+    camadas = []
+    ab_ate = job["abertura"]["ate"] if job.get("abertura") else 0
+    if ab_ate:
+        camadas.append((0.0, ab_ate, tmp / "abertura.png"))
     for k, l in enumerate(legendas):
-        entradas += ["-loop", "1", "-t", str(D), "-i", str(tmp / f"leg_{k:02d}.png")]
-        f.append(f"[{atual}][{idx}:v]overlay=0:0:enable='between(t,{l['de']:.3f},{l['ate']:.3f})'[l{k}]"); atual = f"l{k}"; idx += 1
+        camadas.append((max(l["de"], ab_ate), min(l["ate"], S), tmp / f"leg_{k:02d}.png"))
+    marcos = sorted({0.0, S, *[c[0] for c in camadas], *[c[1] for c in camadas]})
+    cache, linhas = {}, []
+    for a0, a1 in zip(marcos, marcos[1:]):
+        if a1 - a0 < 1e-3:
+            continue
+        meio = (a0 + a1) / 2
+        ativa = next((c[2] for c in camadas if c[0] <= meio < c[1]), None)
+        if ativa not in cache:
+            img = fixo.copy()
+            if ativa:
+                img.alpha_composite(Image.open(ativa).convert("RGBA"))
+            arq = tmp / f"ov_{len(cache):03d}.png"
+            img.save(arq)
+            cache[ativa] = arq
+        linhas.append((cache[ativa], a1 - a0))
+    lista = tmp / "sobreposicao.txt"
+    lista.write_text("".join(f"file '{a}'\nduration {d:.4f}\n" for a, d in linhas) + f"file '{linhas[-1][0]}'\n", encoding="utf-8")
+    entradas = []
+    for i, fim in trechos:
+        entradas += ["-ss", f"{i:.3f}", "-t", f"{fim - i:.3f}", "-i", str(video)]
+    entradas += ["-f", "concat", "-safe", "0", "-i", str(lista),
+                 "-loop", "1", "-t", str(DF + 0.2), "-framerate", str(FPS), "-i", str(tmp / "fech.png")]
+    f.append(f"[{n}:v]fps={FPS},format=rgba,setpts=PTS-STARTPTS[ov]")
+    f.append("[vc][ov]overlay=0:0:eof_action=pass:shortest=0[f0]")
+    atual = "f0"
     f.append(f"[{atual}]format=yuv420p,settb=1/{FPS}[fala]")
-    f.append(f"[2:v]fps={FPS},format=yuv420p,settb=1/{FPS}[fe]")
+    f.append(f"[{n + 1}:v]fps={FPS},format=yuv420p,settb=1/{FPS}[fe]")
     f.append(f"[fala][fe]xfade=transition=fade:duration=0.35:offset={S - 0.35:.3f}[v]")
     norm = (f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
             f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true,aresample=48000")
@@ -242,7 +274,7 @@ def main() -> None:
             "-c:v", "libx264", "-preset", "slow", "-b:v", f"{kbps}k", "-maxrate", f"{int(kbps * 1.4)}k", "-bufsize", f"{kbps * 3}k",
             "-pix_fmt", "yuv420p", "-r", str(FPS)]
     log("1ª passada de vídeo")
-    run(base + ["-pass", "1", "-passlogfile", str(tmp / "x264"), "-an", "-f", "mp4", "/dev/null"])
+    run(base + ["-pass", "1", "-passlogfile", str(tmp / "x264"), "-an", "-f", "null", "-"])
     log("2ª passada de vídeo")
     run(base + ["-pass", "2", "-passlogfile", str(tmp / "x264"), "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(mp4)])
     # capa: abertura sobre o primeiro quadro
