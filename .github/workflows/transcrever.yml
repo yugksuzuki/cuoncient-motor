@@ -1,0 +1,62 @@
+name: Transcrever vídeos
+
+on:
+  workflow_dispatch:
+    inputs:
+      arquivos:
+        description: "Lista nome=id_do_drive separada por vírgula (ex.: IMG_0438.MOV=1uih...)"
+        required: true
+      tag:
+        description: "Tag da release onde salvar (rascunho)"
+        required: true
+      modelo:
+        description: "Modelo do faster-whisper"
+        required: false
+        default: "medium"
+      anexar_video:
+        description: "Anexar também o vídeo original na release (sim/nao)"
+        required: false
+        default: "sim"
+
+permissions:
+  contents: write
+
+jobs:
+  transcrever:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Dependências
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q faster-whisper==1.1.1 gdown==5.2.0
+      - name: Baixar do Drive
+        env:
+          ARQUIVOS: ${{ inputs.arquivos }}
+        run: |
+          mkdir -p in out
+          IFS=',' read -ra ITENS <<< "$ARQUIVOS"
+          for it in "${ITENS[@]}"; do
+            nome="${it%%=*}"; id="${it#*=}"
+            nome="$(echo "$nome" | xargs)"; id="$(echo "$id" | xargs)"
+            echo "baixando $nome ($id)"
+            gdown --quiet --id "$id" -O "in/$nome"
+            ls -la "in/$nome"
+          done
+      - name: Transcrever
+        env:
+          MODELO: ${{ inputs.modelo }}
+        run: python motor/transcrever.py in out "$MODELO"
+      - name: Publicar na release (rascunho)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          ANEXAR: ${{ inputs.anexar_video }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "Transcrições $TAG" --notes "Transcrições automáticas (faster-whisper)."
+          gh release upload "$TAG" out/* --clobber
+          if [ "$ANEXAR" = "sim" ]; then gh release upload "$TAG" in/* --clobber; fi
