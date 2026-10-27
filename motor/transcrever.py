@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from faster_whisper import WhisperModel
 
 
@@ -27,16 +29,17 @@ def main() -> None:
     for arq in sorted(ent.iterdir()):
         if not arq.is_file():
             continue
-        wav = sai / f"{arq.stem}.wav"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(arq), "-ac", "1", "-ar", "16000", str(wav)], check=True)
+        # decodifica com o ffmpeg (evita o PyAV) e entrega o áudio em float32 16 kHz mono
+        bruto = subprocess.run(["ffmpeg", "-v", "error", "-i", str(arq), "-f", "s16le", "-ac", "1", "-ar", "16000", "-"],
+                               capture_output=True, check=True).stdout
+        audio = np.frombuffer(bruto, dtype=np.int16).astype(np.float32) / 32768.0
         dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(arq)],
                                    capture_output=True, text=True).stdout.strip() or 0)
-        segs, info = m.transcribe(str(wav), language="pt", word_timestamps=True, vad_filter=True, beam_size=5)
+        segs, info = m.transcribe(audio, language="pt", word_timestamps=True, vad_filter=True, beam_size=5)
         lista = []
         for s in segs:
             lista.append({"ini": round(s.start, 2), "fim": round(s.end, 2), "texto": s.text.strip(),
                           "palavras": [{"p": w.word.strip(), "ini": round(w.start, 2), "fim": round(w.end, 2)} for w in (s.words or [])]})
-        wav.unlink()
         (sai / f"{arq.stem}.json").write_text(json.dumps({"arquivo": arq.name, "duracao": dur, "segmentos": lista}, ensure_ascii=False, indent=1), encoding="utf-8")
         (sai / f"{arq.stem}.srt").write_text("\n".join(f"{i}\n{ts(s['ini'])} --> {ts(s['fim'])}\n{s['texto']}\n" for i, s in enumerate(lista, 1)), encoding="utf-8")
         (sai / f"{arq.stem}.txt").write_text(" ".join(s["texto"] for s in lista), encoding="utf-8")
