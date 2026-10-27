@@ -29,8 +29,7 @@ jobs:
           IFS=',' read -ra ITENS <<< "$ARQUIVOS"
           for it in "${ITENS[@]}"; do
             nome="$(echo "${it%%=*}" | xargs)"; url="$(echo "${it#*=}" | xargs)"
-            curl -fsSL -A "Mozilla/5.0" -o "d/$nome" "$url"
-            ls -la "d/$nome"
+            if curl -fsSL -A "Mozilla/5.0" -o "d/$nome" "$url"; then ls -la "d/$nome"; else echo "FALHOU: $nome ($url)"; rm -f "d/$nome"; fi
           done
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "Arquivos $TAG" --notes "Arquivos baixados por URL."
           gh release upload "$TAG" d/* --clobber
