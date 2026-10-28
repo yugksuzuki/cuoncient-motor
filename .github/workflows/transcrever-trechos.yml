@@ -41,8 +41,12 @@ jobs:
         env:
           PASTA: ${{ inputs.pasta }}
           MODELO: ${{ inputs.modelo }}
-        run: python motor/transcrever_trechos.py "$PASTA" out "$MODELO"
+        run: |
+          mkdir -p out
+          set -o pipefail
+          python motor/transcrever_trechos.py "$PASTA" out "$MODELO" 2>&1 | tee out/log.txt
       - name: Publicar na release (rascunho)
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
