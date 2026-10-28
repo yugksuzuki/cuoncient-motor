@@ -70,7 +70,9 @@ def montar_legendas(job: dict, transc: dict) -> list[dict]:
     palavras = [w for w in palavras if w["p"].strip()]
     saida, acc = [], 0.0
     for ini, fim in job["trechos"]:
-        ws = [w for w in palavras if w["ini"] >= ini - 0.05 and w["fim"] <= fim + 0.15]
+        # o whisper estica a palavra até a pausa seguinte: entra a palavra que ocupa de fato o trecho
+        ws = [w for w in palavras
+              if min(w["fim"], fim) - max(w["ini"], ini) >= min(0.12, 0.5 * (w["fim"] - w["ini"]))]
         grupo: list[dict] = []
 
         def fechar():
@@ -218,6 +220,8 @@ def main() -> None:
     f = []
     for k, (i, fim) in enumerate(trechos):
         z = zooms[k % len(zooms)]
+        if q.get("pos"):  # enquadramento por trecho: [[cx, cy], ...]
+            cx, cy = q["pos"][k % len(q["pos"])]
         sw, sh = int(W * z) // 2 * 2, int(H * z) // 2 * 2
         x = max(0, min(sw - W, int(cx * sw - W / 2)))
         y = max(0, min(sh - H, int(cy * sh - H / 2)))

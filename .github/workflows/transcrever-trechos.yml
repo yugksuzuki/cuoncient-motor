@@ -1,0 +1,51 @@
+name: Transcrever trechos
+
+on:
+  workflow_dispatch:
+    inputs:
+      pasta:
+        description: "Pasta dentro da branch 'dados' com os .flac dos trechos (ex.: trechos/20261027)"
+        required: true
+      tag:
+        description: "Tag da release onde salvar (rascunho)"
+        required: true
+      modelo:
+        description: "Modelo do faster-whisper"
+        required: false
+        default: "medium"
+
+permissions:
+  contents: write
+
+jobs:
+  transcrever:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Dependências
+        run: |
+          command -v ffmpeg || (timeout 240 sudo apt-get update -qq || true; timeout 300 sudo apt-get install -y -qq --no-install-recommends ffmpeg) || pip install -q imageio-ffmpeg
+          timeout 600 pip install -q faster-whisper==1.1.1
+      - name: Trazer os trechos da branch dados
+        env:
+          PASTA: ${{ inputs.pasta }}
+        run: |
+          git fetch --depth 1 origin dados
+          git checkout FETCH_HEAD -- "$PASTA"
+          ls -la "$PASTA"
+      - name: Transcrever
+        env:
+          PASTA: ${{ inputs.pasta }}
+          MODELO: ${{ inputs.modelo }}
+        run: python motor/transcrever_trechos.py "$PASTA" out "$MODELO"
+      - name: Publicar na release (rascunho)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "Transcrições $TAG" --notes "Transcrição por trecho (faster-whisper)."
+          gh release upload "$TAG" out/* --clobber
