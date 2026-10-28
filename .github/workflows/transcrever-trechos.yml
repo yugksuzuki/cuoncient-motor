@@ -29,7 +29,7 @@ jobs:
       - name: Dependências
         run: |
           command -v ffmpeg || (timeout 240 sudo apt-get update -qq || true; timeout 300 sudo apt-get install -y -qq --no-install-recommends ffmpeg) || pip install -q imageio-ffmpeg
-          timeout 600 pip install -q faster-whisper==1.1.1
+          timeout 600 pip install -q faster-whisper==1.1.1 requests
       - name: Trazer os trechos da branch dados
         env:
           PASTA: ${{ inputs.pasta }}
